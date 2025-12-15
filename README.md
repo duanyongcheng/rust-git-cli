@@ -1,4 +1,4 @@
-# Rust Commit
+# Rust Git CLI
 
 一个智能的 Git 提交工具，支持中英文双语提交信息生成。
 
@@ -19,8 +19,8 @@
 
 ```bash
 # 克隆仓库
-git clone https://github.com/yourusername/rust-commit.git
-cd rust-commit
+git clone https://github.com/yourusername/rust-git-cli.git
+cd rust-git-cli
 
 # 编译发布版本
 cargo build --release
@@ -29,7 +29,7 @@ cargo build --release
 cargo install --path .
 
 # 可执行文件位于
-./target/release/rust-commit
+./target/release/rust-git-cli
 ```
 
 ### 系统要求
@@ -43,10 +43,10 @@ cargo install --path .
 
 ```bash
 # 在用户目录创建全局配置
-rust-commit init
+rust-git-cli init
 
 # 或在当前项目创建本地配置
-rust-commit init --local
+rust-git-cli init --local
 ```
 
 ### 2. 设置 API Key
@@ -56,23 +56,23 @@ rust-commit init --local
 export OPENAI_API_KEY="your-api-key"
 
 # 方式二：配置文件
-# 编辑 ~/.config/rust-commit/config.toml
+# 编辑 ~/.config/rust-git-cli/config.toml
 ```
 
 ### 3. 使用工具
 
 ```bash
 # 查看仓库状态
-rust-commit
+rust-git-cli
 
 # 生成 AI 提交信息
-rust-commit commit
+rust-git-cli commit
 
 # 显示差异后再生成
-rust-commit commit --show-diff
+rust-git-cli commit --show-diff
 
 # 调试模式（显示 AI 原始响应）
-rust-commit commit --debug
+rust-git-cli commit --debug
 ```
 
 ## 📖 使用指南
@@ -82,53 +82,53 @@ rust-commit commit --debug
 #### 状态检查
 ```bash
 # 检查当前目录
-rust-commit
-rust-commit status
+rust-git-cli
+rust-git-cli status
 
 # 检查指定目录
-rust-commit -p /path/to/repo
+rust-git-cli -p /path/to/repo
 
 # 详细输出
-rust-commit -v
+rust-git-cli -v
 ```
 
 #### 查看差异
 ```bash
 # 查看所有修改
-rust-commit diff
+rust-git-cli diff
 
 # 仅查看已暂存的修改
-rust-commit diff --staged
+rust-git-cli diff --staged
 ```
 
 #### AI 提交
 ```bash
 # 基本使用
-rust-commit commit
+rust-git-cli commit
 
 # 指定 API key（临时）
-rust-commit commit --api-key YOUR_KEY
+rust-git-cli commit --api-key YOUR_KEY
 
 # 使用特定模型
-rust-commit commit --model gpt-4
-rust-commit commit --model deepseek-v3
+rust-git-cli commit --model gpt-4
+rust-git-cli commit --model deepseek-v3
 
 # 自动提交（跳过确认）
-rust-commit commit --auto
+rust-git-cli commit --auto
 
 # 显示差异预览
-rust-commit commit --show-diff
+rust-git-cli commit --show-diff
 
 # 调试模式
-rust-commit commit --debug
+rust-git-cli commit --debug
 ```
 
 ### 智能暂存功能
 
-当执行 `rust-commit commit` 时，工具会自动检测未暂存的更改：
+当执行 `rust-git-cli commit` 时，工具会自动检测未暂存的更改：
 
 ```bash
-$ rust-commit commit
+$ rust-git-cli commit
 
 Unstaged changes detected:
 ──────────────────────────────────────────────────
@@ -145,9 +145,9 @@ Do you want to stage all changes (git add .)? (Y/n)
 ### 配置文件
 
 配置文件查找顺序：
-1. 当前目录 `.rust-commit.toml`
-2. `~/.config/rust-commit/config.toml`
-3. `~/.rust-commit.toml`
+1. 当前目录 `.rust-git-cli.toml`
+2. `~/.config/rust-git-cli/config.toml`
+3. `~/.rust-git-cli.toml`
 
 #### 配置示例
 
@@ -186,7 +186,7 @@ auto_stage = false
 
 1. **命令行参数**（最高优先级）
    ```bash
-   rust-commit commit --api-key YOUR_KEY
+   rust-git-cli commit --api-key YOUR_KEY
    ```
 
 2. **配置文件**
@@ -226,13 +226,13 @@ Integrate OAuth2.0 support
 
 ```bash
 # 1. 查看当前状态
-$ rust-commit status
+$ rust-git-cli status
 
 # 2. 查看具体更改
-$ rust-commit diff
+$ rust-git-cli diff
 
 # 3. 生成并提交
-$ rust-commit commit
+$ rust-git-cli commit
 
 # 如果有未暂存的更改，会提示：
 # Unstaged changes detected:
@@ -253,13 +253,13 @@ $ rust-commit commit
 
 ```bash
 # 查看差异后再决定是否生成提交
-rust-commit commit --show-diff
+rust-git-cli commit --show-diff
 
 # 调试 AI 响应问题
-rust-commit commit --debug
+rust-git-cli commit --debug
 
 # 跳过所有确认（CI/CD 环境）
-rust-commit commit --auto
+rust-git-cli commit --auto
 ```
 
 ### 提交类型
@@ -278,7 +278,7 @@ rust-commit commit --auto
 使用 `--debug` 标志可以查看 AI 的原始响应，方便排查问题：
 
 ```bash
-rust-commit commit --debug
+rust-git-cli commit --debug
 ```
 
 调试模式会显示：
@@ -337,7 +337,7 @@ src/
 
 3. **临时使用：命令行参数**
    ```bash
-   rust-commit commit --api-key YOUR_KEY
+   rust-git-cli commit --api-key YOUR_KEY
    ```
 
 ### 工作流程建议
@@ -383,8 +383,8 @@ src/
 
 ```bash
 # 查看帮助信息
-rust-commit --help
-rust-commit commit --help
+rust-git-cli --help
+rust-git-cli commit --help
 ```
 
 ## 📄 许可证

@@ -56,12 +56,12 @@ impl Default for Config {
 impl Config {
     pub fn load() -> Result<Self> {
         // Try to load from multiple locations
-        let mut config_paths = vec![PathBuf::from(".rust-commit.toml")];
+        let mut config_paths = vec![PathBuf::from(".rust-git-cli.toml")];
 
         // Only add home directory paths if home_dir is available
         if let Some(home) = dirs::home_dir() {
-            config_paths.push(home.join(".config/rust-commit/config.toml"));
-            config_paths.push(home.join(".rust-commit.toml"));
+            config_paths.push(home.join(".config/rust-git-cli/config.toml"));
+            config_paths.push(home.join(".rust-git-cli.toml"));
         }
 
         for path in config_paths {
@@ -90,11 +90,11 @@ impl Config {
 
     pub fn init(local: bool, force: bool) -> Result<PathBuf> {
         let path = if local {
-            PathBuf::from(".rust-commit.toml")
+            PathBuf::from(".rust-git-cli.toml")
         } else {
-            // Use ~/.config/rust-commit/config.toml
+            // Use ~/.config/rust-git-cli/config.toml
             dirs::home_dir()
-                .map(|p| p.join(".config/rust-commit/config.toml"))
+                .map(|p| p.join(".config/rust-git-cli/config.toml"))
                 .ok_or_else(|| anyhow::anyhow!("Could not determine home directory"))?
         };
 
@@ -107,8 +107,8 @@ impl Config {
         }
 
         // Create default config with helpful comments
-        let config_content = r#"# Rust Commit Configuration File
-# This file configures the rust-commit tool for AI-powered commit message generation
+        let config_content = r#"# Rust Git CLI Configuration File
+# This file configures the rust-git-cli tool for AI-powered commit message generation
 
 [ai]
 # AI provider: "openai" or "anthropic"

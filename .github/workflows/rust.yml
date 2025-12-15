@@ -85,25 +85,25 @@ jobs:
         include:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-            artifact_name: rust-commit
-            asset_name: rust-commit-linux-amd64
+            artifact_name: rust-git-cli
+            asset_name: rust-git-cli-linux-amd64
           - os: ubuntu-latest
             target: aarch64-unknown-linux-gnu
-            artifact_name: rust-commit
-            asset_name: rust-commit-linux-arm64
+            artifact_name: rust-git-cli
+            asset_name: rust-git-cli-linux-arm64
             use_cross: true
           - os: windows-latest
             target: x86_64-pc-windows-msvc
-            artifact_name: rust-commit.exe
-            asset_name: rust-commit-windows-amd64.exe
+            artifact_name: rust-git-cli.exe
+            asset_name: rust-git-cli-windows-amd64.exe
           - os: macos-latest
             target: x86_64-apple-darwin
-            artifact_name: rust-commit
-            asset_name: rust-commit-macos-amd64
+            artifact_name: rust-git-cli
+            asset_name: rust-git-cli-macos-amd64
           - os: macos-latest
             target: aarch64-apple-darwin
-            artifact_name: rust-commit
-            asset_name: rust-commit-macos-arm64
+            artifact_name: rust-git-cli
+            asset_name: rust-git-cli-macos-arm64
 
     steps:
     - uses: actions/checkout@v4

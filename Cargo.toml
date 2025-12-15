@@ -1,11 +1,11 @@
 [package]
-name = "rust-commit"
+name = "rust-git-cli"
 version = "0.1.0"
 edition = "2021"
 authors = ["duanyongcheng <duanyongcheng77@gmail.com>"]
 license = "MIT"
 description = "An intelligent Git commit tool with AI-powered bilingual commit message generation"
-repository = "https://github.com/duanyongcheng/rust-commit"
+repository = "https://github.com/duanyongcheng/rust-git-cli"
 keywords = ["git", "commit", "ai", "cli", "tool"]
 categories = ["command-line-utilities", "development-tools"]
 

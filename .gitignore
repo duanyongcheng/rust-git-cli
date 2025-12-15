@@ -19,7 +19,7 @@ Cargo.lock
 Thumbs.db
 
 # Config files with sensitive data
-.rust-commit.toml
+.rust-git-cli.toml
 *.toml.local
 
 # Environment files

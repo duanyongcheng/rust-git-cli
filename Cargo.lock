@@ -1049,7 +1049,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "rust-commit"
+name = "rust-git-cli"
 version = "0.1.0"
 dependencies = [
  "anyhow",

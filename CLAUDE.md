@@ -22,7 +22,7 @@ cargo run -- diff --staged        # Show staged changes only
 cargo run -- commit              # Generate AI commit message
 cargo run -- commit --show-diff  # Show diff preview before generation
 cargo run -- commit --debug      # Debug mode - shows AI raw response
-cargo run -- init                # Initialize config file in ~/.config/rust-commit/
+cargo run -- init                # Initialize config file in ~/.config/rust-git-cli/
 cargo run -- init --local        # Initialize config file in current directory
 
 # Run specific tests and checks
@@ -39,11 +39,11 @@ cargo fix --allow-dirty --allow-staged  # Auto-fix compiler warnings
 
 # Build for distribution
 cargo build --release               # Production optimized build
-target/release/rust-commit --help   # Test release binary
+target/release/rust-git-cli --help   # Test release binary
 
 # Install globally
 cargo install --path .             # Install from local source
-cargo install rust-commit          # Install from crates.io (if published)
+cargo install rust-git-cli          # Install from crates.io (if published)
 
 # Development workflow example
 make test                          # Run all tests, fmt, and clippy
@@ -97,7 +97,7 @@ make check                        # Check syntax without building
 - Model parameter is optional (falls back to config)
 
 **`src/config.rs`**
-- Config file lookup order: `./.rust-commit.toml` → `~/.config/rust-commit/config.toml` → `~/.rust-commit.toml`
+- Config file lookup order: `./.rust-git-cli.toml` → `~/.config/rust-git-cli/config.toml` → `~/.rust-git-cli.toml`
 - API key resolution: CLI arg → config file → env var → interactive prompt
 - Supports custom base URLs for API proxies or alternative endpoints
 
@@ -133,7 +133,7 @@ English explanation point 2
 
 ### API Key Setup Priority
 1. Command-line: `--api-key YOUR_KEY`
-2. Config file: `api_key = "your-key"` in `.rust-commit.toml`
+2. Config file: `api_key = "your-key"` in `.rust-git-cli.toml`
 3. Environment: `OPENAI_API_KEY` or `ANTHROPIC_API_KEY`
 4. Interactive prompt (fallback)
 
@@ -147,7 +147,7 @@ English explanation point 2
 
 Use `--debug` flag to troubleshoot AI responses:
 ```bash
-rust-commit commit --debug
+rust-git-cli commit --debug
 ```
 
 Shows:

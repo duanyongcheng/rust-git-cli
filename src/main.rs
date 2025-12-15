@@ -157,7 +157,7 @@ fn handle_status_command(repo: GitRepo, verbose: bool) -> Result<()> {
             );
             println!(
                 "{}",
-                "     Use 'rust-commit commit' to generate AI commit message".cyan()
+                "     Use 'rust-git-cli commit' to generate AI commit message".cyan()
             );
         }
     }

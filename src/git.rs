@@ -110,6 +110,8 @@ impl GitRepo {
                 Ok(head) => {
                     let tree = head.peel_to_tree()?;
                     let mut index = self.repo.index()?;
+                    // Force reload index from disk in case it was modified externally (e.g., git add)
+                    index.read(true)?;
                     let index_tree = self.repo.find_tree(index.write_tree()?)?;
                     self.repo.diff_tree_to_tree(
                         Some(&tree),
@@ -120,6 +122,8 @@ impl GitRepo {
                 Err(e) if e.code() == git2::ErrorCode::UnbornBranch => {
                     // No commits yet, compare index to empty tree
                     let mut index = self.repo.index()?;
+                    // Force reload index from disk in case it was modified externally (e.g., git add)
+                    index.read(true)?;
                     let index_tree = self.repo.find_tree(index.write_tree()?)?;
                     self.repo
                         .diff_tree_to_tree(None, Some(&index_tree), Some(&mut diff_opts))?
