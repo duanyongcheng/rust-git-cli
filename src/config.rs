@@ -16,6 +16,12 @@ pub struct AIConfig {
     pub api_key_env: String,
     pub api_key: Option<String>,
     pub base_url: Option<String>,
+    #[serde(default = "default_max_tokens")]
+    pub max_tokens: u32,
+}
+
+fn default_max_tokens() -> u32 {
+    2000
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -35,6 +41,7 @@ impl Default for Config {
                 api_key_env: "OPENAI_API_KEY".to_string(),
                 api_key: None,
                 base_url: None,
+                max_tokens: 2000,
             },
             commit: CommitConfig {
                 format: "conventional".to_string(),
@@ -129,6 +136,11 @@ api_key_env = "OPENAI_API_KEY"
 # Examples:
 # base_url = "https://your-proxy.com/v1"  # For API proxies
 # base_url = "http://localhost:8080/v1"   # For local LLMs
+
+# Maximum tokens for AI response (default: 2000)
+# This is the initial max_tokens value. If the response is truncated,
+# it will automatically double up to 4000 tokens.
+max_tokens = 2000
 
 [commit]
 # Commit message format: "conventional" (follows Conventional Commits spec)

@@ -9,10 +9,16 @@ pub struct AnthropicClient {
     model: String,
     base_url: String,
     client: reqwest::Client,
+    initial_max_tokens: u32,
 }
 
 impl AnthropicClient {
-    pub fn new(api_key: String, model: String, base_url: Option<String>) -> Self {
+    pub fn new(
+        api_key: String,
+        model: String,
+        base_url: Option<String>,
+        initial_max_tokens: u32,
+    ) -> Self {
         let client = reqwest::Client::builder()
             .timeout(Duration::from_secs(30))
             .connect_timeout(Duration::from_secs(10))
@@ -24,6 +30,7 @@ impl AnthropicClient {
             model,
             base_url: base_url.unwrap_or_else(|| "https://api.anthropic.com".to_string()),
             client,
+            initial_max_tokens,
         }
     }
 
@@ -37,7 +44,7 @@ impl AnthropicClient {
 
         let request = AnthropicRequest {
             model: self.model.clone(),
-            max_tokens: 500,
+            max_tokens: self.initial_max_tokens,
             messages: vec![AnthropicMessage {
                 role: "user".to_string(),
                 content: format!(

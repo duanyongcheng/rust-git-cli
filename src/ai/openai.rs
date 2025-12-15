@@ -9,10 +9,16 @@ pub struct OpenAIClient {
     model: String,
     base_url: String,
     client: reqwest::Client,
+    initial_max_tokens: u32,
 }
 
 impl OpenAIClient {
-    pub fn new(api_key: String, model: String, base_url: Option<String>) -> Self {
+    pub fn new(
+        api_key: String,
+        model: String,
+        base_url: Option<String>,
+        initial_max_tokens: u32,
+    ) -> Self {
         let client = reqwest::Client::builder()
             .timeout(Duration::from_secs(30))
             .connect_timeout(Duration::from_secs(10))
@@ -24,6 +30,7 @@ impl OpenAIClient {
             model,
             base_url: base_url.unwrap_or_else(|| "https://api.openai.com/v1".to_string()),
             client,
+            initial_max_tokens,
         }
     }
 
@@ -35,7 +42,7 @@ impl OpenAIClient {
     ) -> Result<CommitMessage> {
         let prompt = build_prompt(diff, context);
 
-        let mut max_tokens = 500;
+        let mut max_tokens = self.initial_max_tokens;
         let max_attempts = 4;
 
         for attempt in 0..max_attempts {

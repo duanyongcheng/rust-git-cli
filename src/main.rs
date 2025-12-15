@@ -286,7 +286,13 @@ async fn handle_commit_command(
     let final_model = model.unwrap_or(config.ai.model.clone());
     // Use base_url from CLI if provided, otherwise use config
     let final_base_url = base_url.or(config.ai.base_url.clone());
-    let client = ai::create_client(&config.ai.provider, api_key, final_model, final_base_url)?;
+    let client = ai::create_client(
+        &config.ai.provider,
+        api_key,
+        final_model,
+        final_base_url,
+        config.ai.max_tokens,
+    )?;
 
     CommitUI::show_info("Generating commit message with AI...");
 

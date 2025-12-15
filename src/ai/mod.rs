@@ -149,13 +149,20 @@ pub fn create_client(
     api_key: String,
     model: String,
     base_url: Option<String>,
+    max_tokens: u32,
 ) -> Result<AIClient> {
     match provider.to_lowercase().as_str() {
         "openai" => Ok(AIClient::OpenAI(openai::OpenAIClient::new(
-            api_key, model, base_url,
+            api_key,
+            model,
+            base_url,
+            max_tokens,
         ))),
         "anthropic" => Ok(AIClient::Anthropic(anthropic::AnthropicClient::new(
-            api_key, model, base_url,
+            api_key,
+            model,
+            base_url,
+            max_tokens,
         ))),
         _ => anyhow::bail!("Unsupported AI provider: {}", provider),
     }
