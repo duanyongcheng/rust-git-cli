@@ -12,7 +12,7 @@ use std::process::Command;
 
 use crate::cli::{Args, Commands};
 use crate::config::Config;
-use crate::git::GitRepo;
+use crate::git::{GitRepo, LogOptions};
 use crate::ui::{CommitAction, CommitUI};
 
 #[tokio::main]
@@ -55,6 +55,16 @@ async fn main() -> Result<()> {
         }
         Some(Commands::Diff { staged }) => {
             handle_diff_command(repo, staged)?;
+        }
+        Some(Commands::Log {
+            count,
+            grep,
+            author,
+            since,
+            until,
+            full,
+        }) => {
+            handle_log_command(repo, count, grep, author, since, until, full)?;
         }
         Some(Commands::Status) | None => {
             handle_status_command(repo, args.verbose)?;
@@ -211,6 +221,114 @@ fn handle_diff_command(repo: GitRepo, staged: bool) -> Result<()> {
         println!("{}", "No changes to show".yellow());
     } else {
         println!("{}", diff);
+    }
+
+    Ok(())
+}
+
+fn handle_log_command(
+    repo: GitRepo,
+    count: usize,
+    grep: Option<String>,
+    author: Option<String>,
+    since: Option<String>,
+    until: Option<String>,
+    full: bool,
+) -> Result<()> {
+    let options = LogOptions {
+        count,
+        grep,
+        author,
+        since,
+        until,
+    };
+
+    let commits = repo.get_commits(&options)?;
+
+    if commits.is_empty() {
+        println!("{}", "No commits found".yellow());
+        return Ok(());
+    }
+
+    let is_interactive = std::io::IsTerminal::is_terminal(&std::io::stdin())
+        && std::io::IsTerminal::is_terminal(&std::io::stderr());
+
+    let format_item = |commit: &crate::git::CommitInfo| {
+        let date_str = commit.time.format("%Y-%m-%d %H:%M").to_string();
+        format!(
+            "{} {} - {} ({})",
+            commit.short_id, date_str, commit.summary, commit.author
+        )
+    };
+
+    let print_commit = |commit: &crate::git::CommitInfo| {
+        let date_str = commit.time.format("%Y-%m-%d %H:%M").to_string();
+
+        println!(
+            "{} {} - {} ({})",
+            commit.short_id.yellow(),
+            date_str.dimmed(),
+            commit.summary.bold(),
+            commit.author.cyan()
+        );
+
+        if full && commit.message.lines().count() > 1 {
+            let body: String = commit
+                .message
+                .lines()
+                .skip(1)
+                .filter(|line| !line.trim().is_empty())
+                .map(|line| format!("    {}", line))
+                .collect::<Vec<_>>()
+                .join("\n");
+
+            if !body.is_empty() {
+                println!("{}", body.dimmed());
+            }
+            println!();
+        }
+    };
+
+    if is_interactive {
+        use dialoguer::{theme::ColorfulTheme, MultiSelect};
+
+        let items: Vec<String> = commits.iter().map(format_item).collect();
+        let selections = MultiSelect::with_theme(&ColorfulTheme::default())
+            .with_prompt(format!(
+                "Select changelog entries to print ({} available)",
+                commits.len()
+            ))
+            .items(&items)
+            .interact()?;
+
+        if selections.is_empty() {
+            println!("{}", "No commits selected".yellow());
+            return Ok(());
+        }
+
+        println!(
+            "{} ({} selected)\n",
+            "Changelog".bold().green(),
+            selections.len()
+        );
+
+        for idx in selections {
+            if let Some(commit) = commits.get(idx) {
+                print_commit(commit);
+            }
+        }
+
+        return Ok(());
+    }
+
+    println!(
+        "{} ({} commits)\n",
+        "Changelog".bold().green(),
+        commits.len()
+    );
+
+    for commit in &commits {
+        print_commit(commit);
     }
 
     Ok(())

@@ -54,4 +54,33 @@ pub enum Commands {
         #[arg(long, help = "Force overwrite existing config")]
         force: bool,
     },
+
+    /// Show git commit log (changelog)
+    Log {
+        #[arg(
+            short = 'n',
+            long,
+            default_value = "10",
+            help = "Number of commits to show"
+        )]
+        count: usize,
+
+        #[arg(long, help = "Show only commits containing this text")]
+        grep: Option<String>,
+
+        #[arg(long, help = "Show commits by specific author")]
+        author: Option<String>,
+
+        #[arg(
+            long,
+            help = "Show commits since date (e.g., '2024-01-01' or '1 week ago')"
+        )]
+        since: Option<String>,
+
+        #[arg(long, help = "Show commits until date")]
+        until: Option<String>,
+
+        #[arg(long, help = "Show full commit message")]
+        full: bool,
+    },
 }
