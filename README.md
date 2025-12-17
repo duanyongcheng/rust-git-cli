@@ -12,6 +12,7 @@ An intelligent Git commit tool that generates bilingual (Chinese/English) commit
 - **双语提交** - 自动生成符合 Conventional Commits 规范的中英文双语提交信息
 - **智能暂存** - 自动检测未暂存更改并提示确认
 - **交互式界面** - 彩色输出、差异预览、提交确认
+- **AI Changelog** - 交互式选择提交记录，AI 生成 changelog 总结，支持复制到剪切板
 - **灵活配置** - 支持多级配置文件和环境变量
 
 ## 安装 Installation
@@ -62,7 +63,7 @@ rust-git-cli commit --debug       # 调试模式
 | `status` | 查看仓库状态（默认） |
 | `commit` | AI 生成并执行提交 |
 | `diff` | 查看代码差异 |
-| `log` | 查看提交历史 |
+| `log` | 查看提交历史，支持 AI 生成 changelog |
 | `init` | 初始化配置文件 |
 
 ### commit 命令选项
@@ -91,6 +92,10 @@ Options:
   --since <DATE>       起始日期 (如 "2024-01-01" 或 "1 week ago")
   --until <DATE>       截止日期
   --full               显示完整提交信息
+  --api-key <KEY>      临时指定 API Key (用于生成 changelog)
+  --model <MODEL>      指定 AI 模型
+  --base-url <URL>     自定义 API 端点
+  --debug              显示 AI 原始响应
 ```
 
 ### diff 命令选项
@@ -184,6 +189,13 @@ $ rust-git-cli commit
 # - Edit message: 编辑后提交
 # - Regenerate: 重新生成
 # - Cancel: 取消
+
+# 4. 生成 Changelog
+$ rust-git-cli log -n 20
+
+# 交互式选择提交记录 (Space 选择, Enter 确认)
+# 选择后可生成 AI changelog 总结
+# 支持复制到剪切板
 ```
 
 ## 故障排除 Troubleshooting

@@ -16,7 +16,7 @@ cargo run -- diff                 # Show all changes
 cargo run -- diff --staged        # Show staged changes only
 cargo run -- commit               # Generate AI commit message
 cargo run -- commit --debug       # Debug mode - shows AI raw response
-cargo run -- log -n 20            # Show commit history
+cargo run -- log -n 20            # Show commit history (interactive, supports AI changelog)
 cargo run -- init                 # Initialize config (~/.config/rust-git-cli/)
 cargo run -- init --local         # Initialize config in current directory
 
@@ -52,6 +52,7 @@ CLI (src/cli.rs) → Main dispatch (src/main.rs) → Command handlers
 - `AIClient` enum dispatches to OpenAI/Anthropic providers
 - `CommitMessage` struct with custom deserializers for flexible JSON parsing
 - `build_prompt()` generates bilingual prompt with diff context
+- `generate_changelog()` creates AI summaries from selected commits
 
 **`src/git.rs`** - Git operations via git2 crate
 - `GitRepo` wrapper with `get_status()`, `get_diff()`, `get_combined_diff()`, `get_branch_info()`, `get_commits()`
@@ -80,7 +81,7 @@ CommitMessage {
 }
 
 // src/cli.rs - Commands enum with clap derive
-Commands::Status | Commit { api_key, model, base_url, auto, show_diff, debug } | Diff { staged } | Log { count, grep, author, since, until, full } | Init { local, force }
+Commands::Status | Commit { api_key, model, base_url, auto, show_diff, debug } | Diff { staged } | Log { count, grep, author, since, until, full, api_key, model, base_url, debug } | Init { local, force }
 ```
 
 ## Configuration
