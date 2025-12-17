@@ -142,6 +142,18 @@ impl AIClient {
             }
         }
     }
+
+    pub async fn generate_changelog(
+        &self,
+        commits: &[crate::git::CommitInfo],
+        context: &ChangelogContext,
+        debug: bool,
+    ) -> Result<ChangelogSummary> {
+        match self {
+            AIClient::OpenAI(client) => client.generate_changelog(commits, context, debug).await,
+            AIClient::Anthropic(client) => client.generate_changelog(commits, context, debug).await,
+        }
+    }
 }
 
 pub fn create_client(
@@ -222,4 +234,154 @@ fn truncate_diff(diff: &str, max_chars: usize) -> &str {
         }
         &diff[..boundary]
     }
+}
+
+// Changelog generation types and functions
+
+#[derive(Debug, Clone)]
+pub struct ChangelogContext {
+    pub total_commits: usize,
+    pub date_range: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ChangelogSummary {
+    pub title: String,
+    pub title_en: String,
+    pub highlights: Vec<String>,
+    pub highlights_en: Vec<String>,
+    pub categories: ChangelogCategories,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub struct ChangelogCategories {
+    #[serde(default)]
+    pub features: Vec<String>,
+    #[serde(default)]
+    pub fixes: Vec<String>,
+    #[serde(default)]
+    pub improvements: Vec<String>,
+    #[serde(default)]
+    pub others: Vec<String>,
+}
+
+impl ChangelogSummary {
+    pub fn format_display(&self) -> String {
+        let mut output = String::new();
+
+        // Title
+        output.push_str(&format!("## {}\n", self.title));
+        output.push_str(&format!("## {}\n\n", self.title_en));
+
+        // Highlights
+        if !self.highlights.is_empty() {
+            output.push_str("### 亮点 / Highlights\n");
+            for (zh, en) in self.highlights.iter().zip(self.highlights_en.iter()) {
+                output.push_str(&format!("- {} / {}\n", zh, en));
+            }
+            output.push('\n');
+        }
+
+        // Categories
+        if !self.categories.features.is_empty() {
+            output.push_str("### ✨ 新功能 / Features\n");
+            for item in &self.categories.features {
+                output.push_str(&format!("- {}\n", item));
+            }
+            output.push('\n');
+        }
+
+        if !self.categories.fixes.is_empty() {
+            output.push_str("### 🐛 修复 / Fixes\n");
+            for item in &self.categories.fixes {
+                output.push_str(&format!("- {}\n", item));
+            }
+            output.push('\n');
+        }
+
+        if !self.categories.improvements.is_empty() {
+            output.push_str("### 🔧 改进 / Improvements\n");
+            for item in &self.categories.improvements {
+                output.push_str(&format!("- {}\n", item));
+            }
+            output.push('\n');
+        }
+
+        if !self.categories.others.is_empty() {
+            output.push_str("### 📝 其他 / Others\n");
+            for item in &self.categories.others {
+                output.push_str(&format!("- {}\n", item));
+            }
+            output.push('\n');
+        }
+
+        output
+    }
+}
+
+pub fn build_changelog_prompt(
+    commits: &[crate::git::CommitInfo],
+    context: &ChangelogContext,
+) -> String {
+    let commits_text: String = commits
+        .iter()
+        .map(|c| {
+            format!(
+                "- [{}] {} - {} ({})",
+                c.short_id,
+                c.time.format("%Y-%m-%d"),
+                c.summary,
+                c.author
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    format!(
+        r#"You are a changelog summarizer. Based on the following git commits, generate a bilingual (Chinese and English) changelog summary.
+
+Context:
+- Total commits: {}
+- Date range: {}
+
+Git Commits:
+```
+{}
+```
+
+Generate a changelog summary with the following structure:
+- title: 中文标题，简要概括这些提交的主题
+- title_en: English title summarizing the theme
+- highlights: 中文亮点列表，最重要的2-3个变更
+- highlights_en: English highlights corresponding to Chinese
+- categories: 按类型分类的变更列表（双语混合格式）
+  - features: 新功能列表
+  - fixes: 修复列表
+  - improvements: 改进列表
+  - others: 其他变更
+
+Important:
+1. Analyze commit messages to understand the changes
+2. Group similar changes together
+3. Use clear, concise language
+4. Each item in categories should be bilingual format: "中文描述 / English description"
+
+Respond with a JSON object. Example:
+{{
+    "title": "用户认证与性能优化",
+    "title_en": "User Authentication and Performance Optimization",
+    "highlights": ["添加了完整的用户认证系统", "优化了数据库查询性能"],
+    "highlights_en": ["Added complete user authentication system", "Optimized database query performance"],
+    "categories": {{
+        "features": ["用户登录功能 / User login feature", "OAuth2.0 支持 / OAuth2.0 support"],
+        "fixes": ["修复登录超时问题 / Fix login timeout issue"],
+        "improvements": ["优化API响应速度 / Optimize API response speed"],
+        "others": ["更新依赖版本 / Update dependencies"]
+    }}
+}}
+"#,
+        context.total_commits,
+        context.date_range.as_deref().unwrap_or("N/A"),
+        commits_text
+    )
 }

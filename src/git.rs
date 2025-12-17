@@ -206,6 +206,7 @@ pub struct TrackingInfo {
 }
 
 #[allow(dead_code)]
+#[derive(Clone)]
 pub struct CommitInfo {
     pub id: String,
     pub short_id: String,

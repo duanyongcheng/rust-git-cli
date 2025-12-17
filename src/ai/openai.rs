@@ -1,4 +1,7 @@
-use super::{build_prompt, CommitContext, CommitMessage};
+use super::{
+    build_changelog_prompt, build_prompt, ChangelogContext, ChangelogSummary, CommitContext,
+    CommitMessage,
+};
 use anyhow::{Context, Result};
 use colored::*;
 use serde::{Deserialize, Serialize};
@@ -234,6 +237,160 @@ impl OpenAIClient {
         anyhow::bail!(
             "Failed to obtain a valid commit message from OpenAI after multiple attempts"
         );
+    }
+
+    pub async fn generate_changelog(
+        &self,
+        commits: &[crate::git::CommitInfo],
+        context: &ChangelogContext,
+        debug: bool,
+    ) -> Result<ChangelogSummary> {
+        let prompt = build_changelog_prompt(commits, context);
+
+        let messages = vec![
+            Message {
+                role: "system".to_string(),
+                content: "You are a helpful assistant that generates changelog summaries in JSON format. Reply with exactly one valid, minified JSON object.".to_string(),
+            },
+            Message {
+                role: "user".to_string(),
+                content: prompt,
+            },
+        ];
+
+        let request = OpenAIRequest {
+            model: self.model.clone(),
+            messages,
+            temperature: 0.7,
+            max_tokens: self.initial_max_tokens,
+            response_format: Some(ResponseFormat {
+                type_field: "json_object".to_string(),
+            }),
+        };
+
+        let response = self
+            .client
+            .post(format!("{}/chat/completions", self.base_url))
+            .header("Authorization", format!("Bearer {}", self.api_key))
+            .json(&request)
+            .send()
+            .await
+            .context("Failed to send request to OpenAI")?;
+
+        if !response.status().is_success() {
+            let status = response.status();
+            let error_text = response.text().await?;
+
+            let safe_error = match status.as_u16() {
+                401 => "Authentication failed. Please check your API key.",
+                403 => "Access forbidden. Please check your API permissions.",
+                429 => "Rate limit exceeded. Please try again later.",
+                500..=599 => "OpenAI service error. Please try again later.",
+                _ => "Request failed. Please check your configuration.",
+            };
+
+            if debug {
+                eprintln!("Debug: Full error response: {}", error_text);
+            }
+
+            anyhow::bail!("{} (Status: {})", safe_error, status);
+        }
+
+        let response_text = response
+            .text()
+            .await
+            .context("Failed to read response text")?;
+
+        if debug {
+            println!("\n{}", "=== DEBUG: Raw HTTP Response ===".cyan().bold());
+            println!("{}", response_text);
+            println!("{}", "=================================\n".cyan().bold());
+        }
+
+        let api_response: OpenAIResponse =
+            serde_json::from_str(&response_text).context("Failed to parse OpenAI response")?;
+
+        let choice = api_response
+            .choices
+            .first()
+            .ok_or_else(|| anyhow::anyhow!("No response from OpenAI"))?;
+
+        let content = choice
+            .message
+            .content
+            .clone()
+            .ok_or_else(|| anyhow::anyhow!("Response content is null"))?;
+
+        if debug {
+            println!("\n{}", "=== DEBUG: AI Message Content ===".cyan().bold());
+            println!("{}", content);
+            println!("{}", "==================================\n".cyan().bold());
+        }
+
+        // Strip markdown code block wrapper if present
+        let clean_content = if content.starts_with("```json") && content.ends_with("```") {
+            content
+                .strip_prefix("```json")
+                .and_then(|s| s.strip_suffix("```"))
+                .map(|s| s.trim())
+                .unwrap_or(&content)
+        } else if content.starts_with("```") && content.ends_with("```") {
+            content
+                .strip_prefix("```")
+                .and_then(|s| s.strip_suffix("```"))
+                .map(|s| s.trim())
+                .unwrap_or(&content)
+        } else {
+            &content
+        };
+
+        let changelog = match serde_json::from_str::<ChangelogSummary>(clean_content) {
+            Ok(summary) => summary,
+            Err(primary_err) => {
+                // Try to extract JSON object
+                let mut depth = 0;
+                let mut start_idx = None;
+                let mut end_idx = None;
+
+                for (idx, ch) in clean_content.char_indices() {
+                    match ch {
+                        '{' => {
+                            if depth == 0 && start_idx.is_none() {
+                                start_idx = Some(idx);
+                            }
+                            depth += 1;
+                        }
+                        '}' => {
+                            if depth > 0 {
+                                depth -= 1;
+                            }
+                            if depth == 0 && start_idx.is_some() {
+                                end_idx = Some(idx + ch.len_utf8());
+                                break;
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+
+                if let (Some(start), Some(end)) = (start_idx, end_idx) {
+                    let json_str = &clean_content[start..end];
+                    serde_json::from_str::<ChangelogSummary>(json_str).with_context(|| {
+                        format!(
+                            "Failed to parse extracted JSON from OpenAI response: {}",
+                            primary_err
+                        )
+                    })?
+                } else {
+                    return Err(anyhow::anyhow!(
+                        "Failed to parse changelog from OpenAI response: {}",
+                        primary_err
+                    ));
+                }
+            }
+        };
+
+        Ok(changelog)
     }
 }
 

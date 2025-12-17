@@ -82,5 +82,17 @@ pub enum Commands {
 
         #[arg(long, help = "Show full commit message")]
         full: bool,
+
+        #[arg(long, help = "API key for AI service (or set OPENAI_API_KEY env var)")]
+        api_key: Option<String>,
+
+        #[arg(long, help = "AI model to use (overrides config)")]
+        model: Option<String>,
+
+        #[arg(long, help = "Custom API base URL")]
+        base_url: Option<String>,
+
+        #[arg(long, help = "Debug mode - show AI raw response")]
+        debug: bool,
     },
 }

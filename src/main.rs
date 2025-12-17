@@ -63,8 +63,15 @@ async fn main() -> Result<()> {
             since,
             until,
             full,
+            api_key,
+            model,
+            base_url,
+            debug,
         }) => {
-            handle_log_command(repo, count, grep, author, since, until, full)?;
+            handle_log_command(
+                repo, count, grep, author, since, until, full, api_key, model, base_url, debug,
+            )
+            .await?;
         }
         Some(Commands::Status) | None => {
             handle_status_command(repo, args.verbose)?;
@@ -226,7 +233,8 @@ fn handle_diff_command(repo: GitRepo, staged: bool) -> Result<()> {
     Ok(())
 }
 
-fn handle_log_command(
+#[allow(clippy::too_many_arguments)]
+async fn handle_log_command(
     repo: GitRepo,
     count: usize,
     grep: Option<String>,
@@ -234,13 +242,17 @@ fn handle_log_command(
     since: Option<String>,
     until: Option<String>,
     full: bool,
+    api_key: Option<String>,
+    model: Option<String>,
+    base_url: Option<String>,
+    debug: bool,
 ) -> Result<()> {
     let options = LogOptions {
         count,
         grep,
         author,
-        since,
-        until,
+        since: since.clone(),
+        until: until.clone(),
     };
 
     let commits = repo.get_commits(&options)?;
@@ -289,13 +301,16 @@ fn handle_log_command(
         }
     };
 
+    // Store selected commits for AI changelog generation
+    let selected_commits: Vec<crate::git::CommitInfo>;
+
     if is_interactive {
-        use dialoguer::{theme::ColorfulTheme, MultiSelect};
+        use dialoguer::{theme::ColorfulTheme, MultiSelect, Select};
 
         let items: Vec<String> = commits.iter().map(format_item).collect();
         let selections = MultiSelect::with_theme(&ColorfulTheme::default())
             .with_prompt(format!(
-                "Select changelog entries to print ({} available)",
+                "Select commits ({} available, Space to select, Enter to confirm)",
                 commits.len()
             ))
             .items(&items)
@@ -306,21 +321,136 @@ fn handle_log_command(
             return Ok(());
         }
 
+        // Collect selected commits
+        selected_commits = selections
+            .iter()
+            .filter_map(|&idx| commits.get(idx).cloned())
+            .collect();
+
         println!(
-            "{} ({} selected)\n",
-            "Changelog".bold().green(),
-            selections.len()
+            "\n{} ({} selected)\n",
+            "Selected Commits".bold().green(),
+            selected_commits.len()
         );
 
-        for idx in selections {
-            if let Some(commit) = commits.get(idx) {
-                print_commit(commit);
+        for commit in &selected_commits {
+            print_commit(commit);
+        }
+
+        // Ask what to do next
+        let actions = vec!["Generate AI Changelog Summary", "Just print (done)"];
+
+        let action = Select::with_theme(&ColorfulTheme::default())
+            .with_prompt("What would you like to do?")
+            .items(&actions)
+            .default(0)
+            .interact()?;
+
+        if action == 1 {
+            return Ok(());
+        }
+
+        // Generate AI changelog
+        let config = Config::load().unwrap_or_default();
+
+        let api_key = api_key
+            .or_else(|| config.get_api_key())
+            .or_else(|| CommitUI::get_api_key(&config.ai.provider).ok());
+
+        let api_key = match api_key {
+            Some(key) => key,
+            None => {
+                println!(
+                    "{}",
+                    "No API key provided. Cannot generate AI changelog.".red()
+                );
+                return Ok(());
+            }
+        };
+
+        let final_model = model.unwrap_or(config.ai.model.clone());
+        let final_base_url = base_url.or(config.ai.base_url.clone());
+
+        let client = ai::create_client(
+            &config.ai.provider,
+            api_key,
+            final_model,
+            final_base_url,
+            config.ai.max_tokens,
+        )?;
+
+        // Build date range string
+        let date_range = if !selected_commits.is_empty() {
+            let first_date = selected_commits
+                .last()
+                .map(|c| c.time.format("%Y-%m-%d").to_string());
+            let last_date = selected_commits
+                .first()
+                .map(|c| c.time.format("%Y-%m-%d").to_string());
+            match (first_date, last_date) {
+                (Some(first), Some(last)) if first != last => Some(format!("{} ~ {}", first, last)),
+                (Some(first), _) => Some(first),
+                _ => None,
+            }
+        } else {
+            None
+        };
+
+        let context = ai::ChangelogContext {
+            total_commits: selected_commits.len(),
+            date_range,
+        };
+
+        CommitUI::show_info("Generating AI changelog summary...");
+
+        let changelog = client
+            .generate_changelog(&selected_commits, &context, debug)
+            .await?;
+
+        let changelog_text = changelog.format_display();
+
+        println!("\n{}", "=".repeat(60));
+        println!("{}", "AI Generated Changelog Summary".bold().green());
+        println!("{}\n", "=".repeat(60));
+        println!("{}", changelog_text);
+
+        // Ask if user wants to copy to clipboard
+        let copy_actions = vec!["Copy to clipboard", "Done"];
+
+        let copy_action = Select::with_theme(&ColorfulTheme::default())
+            .with_prompt("What would you like to do?")
+            .items(&copy_actions)
+            .default(0)
+            .interact()?;
+
+        if copy_action == 0 {
+            match arboard::Clipboard::new() {
+                Ok(mut clipboard) => match clipboard.set_text(&changelog_text) {
+                    Ok(_) => {
+                        CommitUI::show_success("Changelog copied to clipboard!");
+                    }
+                    Err(e) => {
+                        println!(
+                            "{} Failed to copy to clipboard: {}",
+                            "Error:".red().bold(),
+                            e
+                        );
+                    }
+                },
+                Err(e) => {
+                    println!(
+                        "{} Failed to access clipboard: {}",
+                        "Error:".red().bold(),
+                        e
+                    );
+                }
             }
         }
 
         return Ok(());
     }
 
+    // Non-interactive mode
     println!(
         "{} ({} commits)\n",
         "Changelog".bold().green(),
