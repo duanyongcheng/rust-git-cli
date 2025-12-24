@@ -24,6 +24,7 @@ cargo run -- init --local         # Initialize config in current directory
 cargo fmt                         # Format code
 cargo clippy -- -D warnings       # Lint with warnings as errors
 cargo test                        # Run all tests
+cargo test test_name              # Run a single test by name
 
 # Release
 cargo build --release
@@ -44,7 +45,7 @@ CLI (src/cli.rs) → Main dispatch (src/main.rs) → Command handlers
 ### Key Components
 
 **`src/main.rs`** - Entry point with command routing
-- `init` command bypasses git repo check (line 24)
+- `init` command bypasses git repo check (handled before repo validation)
 - `check_and_stage_changes()` prompts before staging unstaged files
 - Commands: Status (default), Commit, Diff, Log, Init
 
@@ -65,6 +66,7 @@ CLI (src/cli.rs) → Main dispatch (src/main.rs) → Command handlers
 **`src/ui.rs`** - Interactive prompts via dialoguer
 - `CommitUI::confirm_commit()` shows Accept/Edit/Regenerate/Cancel options
 - Color-coded diff preview
+- Clipboard support via arboard crate (used in log command for changelog copy)
 
 ### Data Structures
 
@@ -79,6 +81,10 @@ CommitMessage {
     body_en: Option<Vec<String>>, // English details
     breaking_change: Option<String>,
 }
+
+// src/ai/mod.rs - Changelog generation
+ChangelogSummary { title, title_en, highlights, highlights_en, categories: ChangelogCategories }
+ChangelogCategories { features, fixes, improvements, others }  // All Vec<String> with bilingual items
 
 // src/cli.rs - Commands enum with clap derive
 Commands::Status | Commit { api_key, model, base_url, auto, show_diff, debug } | Diff { staged } | Log { count, grep, author, since, until, full, api_key, model, base_url, debug } | Init { local, force }
@@ -109,7 +115,7 @@ cargo run -- commit --debug   # Shows raw AI response and JSON parsing
 ## CI/CD
 
 GitHub Actions (`.github/workflows/rust.yml`):
-- Test matrix: Linux/Windows/macOS × stable/beta/nightly Rust
+- Test matrix: Linux/Windows/macOS × stable/nightly Rust (beta excluded on macOS/Windows)
 - Quality gates: `cargo fmt --check`, `cargo clippy -- -D warnings`
-- Release builds on tag push for multiple platforms
+- Release builds on tag push for Linux (amd64/arm64), Windows, macOS (amd64/arm64)
 - Security audit via `rustsec/audit-check`

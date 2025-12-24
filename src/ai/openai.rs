@@ -7,6 +7,60 @@ use colored::*;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
+/// SSE streaming response chunk structure
+#[derive(Deserialize, Debug)]
+struct StreamChunk {
+    choices: Vec<StreamChoice>,
+}
+
+#[derive(Deserialize, Debug)]
+struct StreamChoice {
+    delta: StreamDelta,
+    #[allow(dead_code)]
+    finish_reason: Option<String>,
+}
+
+#[derive(Deserialize, Debug)]
+struct StreamDelta {
+    content: Option<String>,
+}
+
+/// Parse SSE streaming response and concatenate all content chunks
+fn parse_streaming_response(response_text: &str) -> Option<String> {
+    let mut content = String::new();
+    let mut is_streaming = false;
+
+    for line in response_text.lines() {
+        let line = line.trim();
+
+        // Check if this looks like SSE format
+        if line.starts_with("data: ") {
+            is_streaming = true;
+            let data = line.strip_prefix("data: ").unwrap_or("");
+
+            // Skip [DONE] marker
+            if data == "[DONE]" {
+                continue;
+            }
+
+            // Try to parse as streaming chunk
+            if let Ok(chunk) = serde_json::from_str::<StreamChunk>(data) {
+                for choice in chunk.choices {
+                    if let Some(text) = choice.delta.content {
+                        content.push_str(&text);
+                    }
+                }
+            }
+        }
+    }
+
+    if is_streaming && !content.is_empty() {
+        Some(content)
+    } else {
+        None
+    }
+}
+
 pub struct OpenAIClient {
     api_key: String,
     model: String,
@@ -116,19 +170,37 @@ impl OpenAIClient {
                 println!("{}", "=================================\n".cyan().bold());
             }
 
-            let api_response: OpenAIResponse =
-                serde_json::from_str(&response_text).context("Failed to parse OpenAI response")?;
+            // Try to detect and parse streaming response first
+            let (content, finish_reason) =
+                if let Some(streamed_content) = parse_streaming_response(&response_text) {
+                    if debug {
+                        println!(
+                            "{}",
+                            "=== DEBUG: Detected SSE streaming response ==="
+                                .cyan()
+                                .bold()
+                        );
+                    }
+                    // For streaming responses, we assume completion when [DONE] is received
+                    (streamed_content, Some("stop".to_string()))
+                } else {
+                    // Parse as standard OpenAI response
+                    let api_response: OpenAIResponse = serde_json::from_str(&response_text)
+                        .context("Failed to parse OpenAI response")?;
 
-            let choice = api_response
-                .choices
-                .first()
-                .ok_or_else(|| anyhow::anyhow!("No response from OpenAI"))?;
+                    let choice = api_response
+                        .choices
+                        .first()
+                        .ok_or_else(|| anyhow::anyhow!("No response from OpenAI"))?;
 
-            let content = choice
-                .message
-                .content
-                .clone()
-                .ok_or_else(|| anyhow::anyhow!("Response content is null"))?;
+                    let content = choice
+                        .message
+                        .content
+                        .clone()
+                        .ok_or_else(|| anyhow::anyhow!("Response content is null"))?;
+
+                    (content, choice.finish_reason.clone())
+                };
 
             if debug {
                 println!("\n{}", "=== DEBUG: AI Message Content ===".cyan().bold());
@@ -136,7 +208,7 @@ impl OpenAIClient {
                 println!("{}", "==================================\n".cyan().bold());
             }
 
-            match choice.finish_reason.as_deref() {
+            match finish_reason.as_deref() {
                 Some("length") => {
                     if content.trim().is_empty() && attempt + 1 == max_attempts {
                         anyhow::bail!("AI response was truncated repeatedly, resulting in empty content. Try reducing the diff size or switching models.");
@@ -307,19 +379,33 @@ impl OpenAIClient {
             println!("{}", "=================================\n".cyan().bold());
         }
 
-        let api_response: OpenAIResponse =
-            serde_json::from_str(&response_text).context("Failed to parse OpenAI response")?;
+        // Try to detect and parse streaming response first
+        let content = if let Some(streamed_content) = parse_streaming_response(&response_text) {
+            if debug {
+                println!(
+                    "{}",
+                    "=== DEBUG: Detected SSE streaming response ==="
+                        .cyan()
+                        .bold()
+                );
+            }
+            streamed_content
+        } else {
+            // Parse as standard OpenAI response
+            let api_response: OpenAIResponse =
+                serde_json::from_str(&response_text).context("Failed to parse OpenAI response")?;
 
-        let choice = api_response
-            .choices
-            .first()
-            .ok_or_else(|| anyhow::anyhow!("No response from OpenAI"))?;
+            let choice = api_response
+                .choices
+                .first()
+                .ok_or_else(|| anyhow::anyhow!("No response from OpenAI"))?;
 
-        let content = choice
-            .message
-            .content
-            .clone()
-            .ok_or_else(|| anyhow::anyhow!("Response content is null"))?;
+            choice
+                .message
+                .content
+                .clone()
+                .ok_or_else(|| anyhow::anyhow!("Response content is null"))?
+        };
 
         if debug {
             println!("\n{}", "=== DEBUG: AI Message Content ===".cyan().bold());
@@ -429,4 +515,49 @@ struct Choice {
 #[derive(Deserialize)]
 struct ResponseMessage {
     content: Option<String>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_streaming_response() {
+        let sse_response = r#"data: {"id":"chatcmpl-1766389658588","object":"chat.completion.chunk","created":1766389658,"model":"gemini-3-flash","choices":[{"index":0,"delta":{"content":"{\"type\":\"feat\",\"scope\":\"excel\",\"description\":\"新增资金调节表特殊"},"finish_reason":null}]}
+
+data: {"id":"chatcmpl-1766389658588","object":"chat.completion.chunk","created":1766389658,"model":"gemini-3-flash","choices":[{"index":0,"delta":{"content":"识别逻辑\",\"description_en\":\"Add special identification logic\"}"},"finish_reason":null}]}
+
+data: {"id":"chatcmpl-1766389658588","object":"chat.completion.chunk","created":1766389658,"model":"gemini-3-flash","choices":[{"index":0,"delta":{},"finish_reason":"stop"}],"usage":{"prompt_tokens":1404,"completion_tokens":107,"total_tokens":1511}}
+
+data: [DONE]"#;
+
+        let result = parse_streaming_response(sse_response);
+        assert!(result.is_some());
+        let content = result.unwrap();
+        assert!(content.contains(r#""type":"feat""#));
+        assert!(content.contains(r#""scope":"excel""#));
+        assert!(content.contains("新增资金调节表特殊"));
+        assert!(content.contains("识别逻辑"));
+    }
+
+    #[test]
+    fn test_parse_streaming_response_returns_none_for_non_sse() {
+        let normal_response =
+            r#"{"choices":[{"message":{"content":"hello"},"finish_reason":"stop"}]}"#;
+        let result = parse_streaming_response(normal_response);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_parse_streaming_response_handles_empty_deltas() {
+        let sse_response = r#"data: {"id":"test","choices":[{"index":0,"delta":{"content":"hello"},"finish_reason":null}]}
+
+data: {"id":"test","choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}
+
+data: [DONE]"#;
+
+        let result = parse_streaming_response(sse_response);
+        assert!(result.is_some());
+        assert_eq!(result.unwrap(), "hello");
+    }
 }
