@@ -8,6 +8,7 @@ An intelligent Git commit tool that generates bilingual (Chinese/English) commit
 - **Bilingual Commits** - Automatically generates Chinese/English commit messages following Conventional Commits
 - **Smart Staging** - Detects unstaged changes and prompts for confirmation
 - **Interactive UI** - Colored output, diff preview, commit confirmation
+- **AI Changelog** - Interactively select commits, generate AI changelog summary, copy to clipboard
 - **Flexible Configuration** - Multi-level config files and environment variables
 
 ## Installation
@@ -58,8 +59,20 @@ rust-git-cli commit --debug       # Debug mode
 | `status` | Check repository status (default) |
 | `commit` | Generate and execute AI commit |
 | `diff` | Show code changes |
-| `log` | Show commit history |
+| `log` | Show commit history, supports AI changelog generation |
 | `init` | Initialize config file |
+
+### Global Options
+
+```bash
+rust-git-cli [OPTIONS] [COMMAND]
+
+Options:
+  -p, --path <PATH>    Path to check (default: current directory)
+  -v, --verbose        Verbose output
+  -h, --help           Print help
+  -V, --version        Print version
+```
 
 ### commit Options
 
@@ -87,6 +100,10 @@ Options:
   --since <DATE>       Start date (e.g., "2024-01-01" or "1 week ago")
   --until <DATE>       End date
   --full               Show full commit message
+  --api-key <KEY>      Specify API key temporarily (for changelog generation)
+  --model <MODEL>      Specify AI model
+  --base-url <URL>     Custom API endpoint
+  --debug              Show raw AI response
 ```
 
 ### diff Options
@@ -96,6 +113,16 @@ rust-git-cli diff [OPTIONS]
 
 Options:
   --staged             Show only staged changes
+```
+
+### init Options
+
+```bash
+rust-git-cli init [OPTIONS]
+
+Options:
+  --local              Create config in current directory instead of home
+  --force              Force overwrite existing config
 ```
 
 ## Configuration
@@ -180,6 +207,13 @@ $ rust-git-cli commit
 # - Edit message: Edit before commit
 # - Regenerate: Generate again
 # - Cancel: Cancel
+
+# 4. Generate Changelog
+$ rust-git-cli log -n 20
+
+# Interactively select commits (Space to select, Enter to confirm)
+# After selection, generate AI changelog summary
+# Supports copying to clipboard
 ```
 
 ## Troubleshooting

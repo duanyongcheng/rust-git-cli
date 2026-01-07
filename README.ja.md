@@ -8,6 +8,7 @@ AIを使用して中国語/英語のバイリンガルコミットメッセー�
 - **バイリンガルコミット** - Conventional Commits規約に従った中国語/英語のコミットメッセージを自動生成
 - **スマートステージング** - ステージされていない変更を検出し、確認を求める
 - **インタラクティブUI** - カラー出力、差分プレビュー、コミット確認
+- **AI Changelog** - コミットをインタラクティブに選択し、AI changelogサマリーを生成、クリップボードにコピー
 - **柔軟な設定** - マルチレベルの設定ファイルと環境変数
 
 ## インストール
@@ -58,8 +59,20 @@ rust-git-cli commit --debug       # デバッグモード
 | `status` | リポジトリの状態を確認（デフォルト） |
 | `commit` | AIコミットを生成して実行 |
 | `diff` | コード変更を表示 |
-| `log` | コミット履歴を表示 |
+| `log` | コミット履歴を表示、AI changelog生成をサポート |
 | `init` | 設定ファイルを初期化 |
+
+### グローバルオプション
+
+```bash
+rust-git-cli [OPTIONS] [COMMAND]
+
+Options:
+  -p, --path <PATH>    チェックするパス（デフォルト：現在のディレクトリ）
+  -v, --verbose        詳細出力
+  -h, --help           ヘルプを表示
+  -V, --version        バージョンを表示
+```
 
 ### commit オプション
 
@@ -87,6 +100,10 @@ Options:
   --since <DATE>       開始日（例："2024-01-01" または "1 week ago"）
   --until <DATE>       終了日
   --full               完全なコミットメッセージを表示
+  --api-key <KEY>      APIキーを一時的に指定（changelog生成用）
+  --model <MODEL>      AIモデルを指定
+  --base-url <URL>     カスタムAPIエンドポイント
+  --debug              AIの生レスポンスを表示
 ```
 
 ### diff オプション
@@ -96,6 +113,16 @@ rust-git-cli diff [OPTIONS]
 
 Options:
   --staged             ステージされた変更のみ表示
+```
+
+### init オプション
+
+```bash
+rust-git-cli init [OPTIONS]
+
+Options:
+  --local              ホームではなく現在のディレクトリに設定を作成
+  --force              既存の設定を強制的に上書き
 ```
 
 ## 設定
@@ -180,6 +207,13 @@ $ rust-git-cli commit
 # - Edit message: 編集してからコミット
 # - Regenerate: 再生成
 # - Cancel: キャンセル
+
+# 4. Changelogを生成
+$ rust-git-cli log -n 20
+
+# コミットをインタラクティブに選択（Spaceで選択、Enterで確認）
+# 選択後、AI changelogサマリーを生成
+# クリップボードへのコピーをサポート
 ```
 
 ## トラブルシューティング

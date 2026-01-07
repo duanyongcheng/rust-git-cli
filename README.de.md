@@ -8,6 +8,7 @@ Ein intelligentes Git-Commit-Tool, das mit KI zweisprachige (Chinesisch/Englisch
 - **Zweisprachige Commits** - Generiert automatisch Chinesisch/Englische Commit-Nachrichten nach Conventional Commits
 - **Intelligentes Staging** - Erkennt nicht gestagete Änderungen und fordert zur Bestätigung auf
 - **Interaktive Benutzeroberfläche** - Farbige Ausgabe, Diff-Vorschau, Commit-Bestätigung
+- **KI-Changelog** - Commits interaktiv auswählen, KI-Changelog-Zusammenfassung generieren, in Zwischenablage kopieren
 - **Flexible Konfiguration** - Mehrstufige Konfigurationsdateien und Umgebungsvariablen
 
 ## Installation
@@ -58,8 +59,20 @@ rust-git-cli commit --debug       # Debug-Modus
 | `status` | Repository-Status prüfen (Standard) |
 | `commit` | KI-Commit generieren und ausführen |
 | `diff` | Code-Änderungen anzeigen |
-| `log` | Commit-Verlauf anzeigen |
+| `log` | Commit-Verlauf anzeigen, unterstützt KI-Changelog-Generierung |
 | `init` | Konfigurationsdatei initialisieren |
+
+### Globale Optionen
+
+```bash
+rust-git-cli [OPTIONS] [COMMAND]
+
+Optionen:
+  -p, --path <PATH>    Zu prüfender Pfad (Standard: aktuelles Verzeichnis)
+  -v, --verbose        Ausführliche Ausgabe
+  -h, --help           Hilfe anzeigen
+  -V, --version        Version anzeigen
+```
 
 ### commit Optionen
 
@@ -87,6 +100,10 @@ Optionen:
   --since <DATE>       Startdatum (z.B. "2024-01-01" oder "1 week ago")
   --until <DATE>       Enddatum
   --full               Vollständige Commit-Nachricht anzeigen
+  --api-key <KEY>      API-Schlüssel temporär angeben (für Changelog-Generierung)
+  --model <MODEL>      KI-Modell angeben
+  --base-url <URL>     Benutzerdefinierter API-Endpunkt
+  --debug              Rohe KI-Antwort anzeigen
 ```
 
 ### diff Optionen
@@ -96,6 +113,16 @@ rust-git-cli diff [OPTIONS]
 
 Optionen:
   --staged             Nur gestagete Änderungen anzeigen
+```
+
+### init Optionen
+
+```bash
+rust-git-cli init [OPTIONS]
+
+Optionen:
+  --local              Konfiguration im aktuellen Verzeichnis statt Home erstellen
+  --force              Bestehende Konfiguration erzwungen überschreiben
 ```
 
 ## Konfiguration
@@ -180,6 +207,13 @@ $ rust-git-cli commit
 # - Edit message: Vor dem Commit bearbeiten
 # - Regenerate: Neu generieren
 # - Cancel: Abbrechen
+
+# 4. Changelog generieren
+$ rust-git-cli log -n 20
+
+# Commits interaktiv auswählen (Leertaste zum Auswählen, Enter zum Bestätigen)
+# Nach Auswahl KI-Changelog-Zusammenfassung generieren
+# Unterstützt Kopieren in die Zwischenablage
 ```
 
 ## Fehlerbehebung

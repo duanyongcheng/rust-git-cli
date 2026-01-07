@@ -66,6 +66,18 @@ rust-git-cli commit --debug       # 调试模式
 | `log` | 查看提交历史，支持 AI 生成 changelog |
 | `init` | 初始化配置文件 |
 
+### 全局选项
+
+```bash
+rust-git-cli [OPTIONS] [COMMAND]
+
+Options:
+  -p, --path <PATH>    指定要检查的路径（默认：当前目录）
+  -v, --verbose        详细输出
+  -h, --help           显示帮助信息
+  -V, --version        显示版本信息
+```
+
 ### commit 命令选项
 
 ```bash
@@ -105,6 +117,16 @@ rust-git-cli diff [OPTIONS]
 
 Options:
   --staged             仅显示已暂存的更改
+```
+
+### init 命令选项
+
+```bash
+rust-git-cli init [OPTIONS]
+
+Options:
+  --local              在当前目录创建配置文件（而非全局配置）
+  --force              强制覆盖已存在的配置文件
 ```
 
 ## 配置 Configuration
