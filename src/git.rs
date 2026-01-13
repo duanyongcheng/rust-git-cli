@@ -7,7 +7,7 @@ pub struct GitRepo {
 
 impl GitRepo {
     pub fn open(path: &std::path::Path) -> Result<Self> {
-        let repo = Repository::open(path).context("Failed to open repository")?;
+        let repo = Repository::discover(path).context("Failed to open repository")?;
         Ok(Self { repo })
     }
 
