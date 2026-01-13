@@ -7,6 +7,7 @@ mod ui;
 use anyhow::{Context, Result};
 use clap::Parser;
 use colored::*;
+use log::debug;
 use std::env;
 use std::process::Command;
 
@@ -17,6 +18,12 @@ use crate::ui::{CommitAction, CommitUI};
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    // Initialize logger - RUST_LOG env var takes priority, otherwise use config
+    let config = Config::load().unwrap_or_default();
+    env_logger::Builder::from_env(
+        env_logger::Env::default().default_filter_or(&config.log_level)
+    ).init();
+
     let args = Args::parse();
     let path = args.path.unwrap_or_else(|| env::current_dir().unwrap());
 
@@ -586,11 +593,9 @@ async fn handle_commit_command(
     let diff = repo.get_combined_diff()?;
 
     // Debug: Check if we're getting the staged diff correctly
-    if debug {
-        println!("Debug: Combined diff length: {}", diff.len());
-        if diff.len() > 100 {
-            println!("Debug: First 100 chars of diff: {}", &diff[..100]);
-        }
+    debug!("Combined diff length: {}", diff.len());
+    if diff.len() > 100 {
+        debug!("First 100 chars of diff: {}", &diff[..100]);
     }
 
     if diff.is_empty() {

@@ -3,7 +3,7 @@ use super::{
     CommitContext, CommitMessage, ReviewContext, ReviewReport,
 };
 use anyhow::{Context, Result};
-use colored::*;
+use log::debug;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
@@ -153,7 +153,7 @@ impl OpenAIClient {
                 };
 
                 if debug {
-                    eprintln!("Debug: Full error response: {}", error_text);
+                    debug!("Full error response: {}", error_text);
                 }
 
                 anyhow::bail!("{} (Status: {})", safe_error, status);
@@ -165,21 +165,14 @@ impl OpenAIClient {
                 .context("Failed to read response text")?;
 
             if debug {
-                println!("\n{}", "=== DEBUG: Raw HTTP Response ===".cyan().bold());
-                println!("{}", response_text);
-                println!("{}", "=================================\n".cyan().bold());
+                debug!("Raw HTTP Response: {}", response_text);
             }
 
             // Try to detect and parse streaming response first
             let (content, finish_reason) =
                 if let Some(streamed_content) = parse_streaming_response(&response_text) {
                     if debug {
-                        println!(
-                            "{}",
-                            "=== DEBUG: Detected SSE streaming response ==="
-                                .cyan()
-                                .bold()
-                        );
+                        debug!("Detected SSE streaming response");
                     }
                     // For streaming responses, we assume completion when [DONE] is received
                     (streamed_content, Some("stop".to_string()))
@@ -203,9 +196,7 @@ impl OpenAIClient {
                 };
 
             if debug {
-                println!("\n{}", "=== DEBUG: AI Message Content ===".cyan().bold());
-                println!("{}", content);
-                println!("{}", "==================================\n".cyan().bold());
+                debug!("AI Message Content: {}", content);
             }
 
             match finish_reason.as_deref() {
@@ -216,17 +207,10 @@ impl OpenAIClient {
 
                     if attempt + 1 < max_attempts {
                         max_tokens = (max_tokens.saturating_mul(2)).min(4000);
-                        if debug {
-                            println!(
-                                "{}",
-                                format!(
-                                    "=== DEBUG: finish_reason=length, retrying with max_tokens={} ===",
-                                    max_tokens
-                                )
-                                .cyan()
-                                .bold()
-                            );
-                        }
+                        debug!(
+                            "finish_reason=length, retrying with max_tokens={}",
+                            max_tokens
+                        );
                         continue;
                     } else {
                         anyhow::bail!("AI response was truncated before completing the JSON (finish_reason=length). Try reducing the diff size or switching models.");
@@ -372,7 +356,7 @@ impl OpenAIClient {
                 };
 
                 if debug {
-                    eprintln!("Debug: Full error response: {}", error_text);
+                    debug!("Full error response: {}", error_text);
                 }
 
                 anyhow::bail!("{} (Status: {})", safe_error, status);
@@ -384,20 +368,13 @@ impl OpenAIClient {
                 .context("Failed to read response text")?;
 
             if debug {
-                println!("\n{}", "=== DEBUG: Raw HTTP Response ===".cyan().bold());
-                println!("{}", response_text);
-                println!("{}", "=================================\n".cyan().bold());
+                debug!("Raw HTTP Response: {}", response_text);
             }
 
             let (content, finish_reason) =
                 if let Some(streamed_content) = parse_streaming_response(&response_text) {
                     if debug {
-                        println!(
-                            "{}",
-                            "=== DEBUG: Detected SSE streaming response ==="
-                                .cyan()
-                                .bold()
-                        );
+                        debug!("Detected SSE streaming response");
                     }
                     (streamed_content, Some("stop".to_string()))
                 } else {
@@ -419,26 +396,17 @@ impl OpenAIClient {
                 };
 
             if debug {
-                println!("\n{}", "=== DEBUG: AI Message Content ===".cyan().bold());
-                println!("{}", content);
-                println!("{}", "==================================\n".cyan().bold());
+                debug!("AI Message Content: {}", content);
             }
 
             match finish_reason.as_deref() {
                 Some("length") => {
                     if attempt + 1 < max_attempts {
                         max_tokens = (max_tokens.saturating_mul(2)).min(4000);
-                        if debug {
-                            println!(
-                                "{}",
-                                format!(
-                                    "=== DEBUG: finish_reason=length, retrying with max_tokens={} ===",
-                                    max_tokens
-                                )
-                                .cyan()
-                                .bold()
-                            );
-                        }
+                        debug!(
+                            "finish_reason=length, retrying with max_tokens={}",
+                            max_tokens
+                        );
                         continue;
                     }
                     anyhow::bail!("AI response was truncated (finish_reason=length). Try reducing the diff size or increasing max_tokens in config.");
@@ -570,7 +538,7 @@ impl OpenAIClient {
             };
 
             if debug {
-                eprintln!("Debug: Full error response: {}", error_text);
+                debug!("Full error response: {}", error_text);
             }
 
             anyhow::bail!("{} (Status: {})", safe_error, status);
@@ -582,20 +550,13 @@ impl OpenAIClient {
             .context("Failed to read response text")?;
 
         if debug {
-            println!("\n{}", "=== DEBUG: Raw HTTP Response ===".cyan().bold());
-            println!("{}", response_text);
-            println!("{}", "=================================\n".cyan().bold());
+            debug!("Raw HTTP Response: {}", response_text);
         }
 
         // Try to detect and parse streaming response first
         let content = if let Some(streamed_content) = parse_streaming_response(&response_text) {
             if debug {
-                println!(
-                    "{}",
-                    "=== DEBUG: Detected SSE streaming response ==="
-                        .cyan()
-                        .bold()
-                );
+                debug!("Detected SSE streaming response");
             }
             streamed_content
         } else {
@@ -616,9 +577,7 @@ impl OpenAIClient {
         };
 
         if debug {
-            println!("\n{}", "=== DEBUG: AI Message Content ===".cyan().bold());
-            println!("{}", content);
-            println!("{}", "==================================\n".cyan().bold());
+            debug!("AI Message Content: {}", content);
         }
 
         // Strip markdown code block wrapper if present

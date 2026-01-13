@@ -7,6 +7,12 @@ use std::path::PathBuf;
 pub struct Config {
     pub ai: AIConfig,
     pub commit: CommitConfig,
+    #[serde(default = "default_log_level")]
+    pub log_level: String,
+}
+
+fn default_log_level() -> String {
+    "warn".to_string()
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -49,6 +55,7 @@ impl Default for Config {
                 max_diff_size: 10000,
                 auto_stage: false,
             },
+            log_level: default_log_level(),
         }
     }
 }

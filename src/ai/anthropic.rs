@@ -3,7 +3,7 @@ use super::{
     CommitContext, CommitMessage, ReviewContext, ReviewReport,
 };
 use anyhow::{Context, Result};
-use colored::*;
+use log::debug;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
@@ -82,7 +82,7 @@ impl AnthropicClient {
             };
 
             if debug {
-                eprintln!("Debug: Full error response: {}", error_text);
+                debug!("Full error response: {}", error_text);
             }
 
             anyhow::bail!("{} (Status: {})", safe_error, status);
@@ -94,9 +94,7 @@ impl AnthropicClient {
             .context("Failed to read response text")?;
 
         if debug {
-            println!("\n{}", "=== DEBUG: Raw HTTP Response ===".cyan().bold());
-            println!("{}", response_text);
-            println!("{}", "=================================\n".cyan().bold());
+            debug!("Raw HTTP Response: {}", response_text);
         }
 
         let api_response: AnthropicResponse =
@@ -110,9 +108,7 @@ impl AnthropicClient {
             .clone();
 
         if debug {
-            println!("\n{}", "=== DEBUG: AI Message Content ===".cyan().bold());
-            println!("{}", content);
-            println!("{}", "==================================\n".cyan().bold());
+            debug!("AI Message Content: {}", content);
         }
 
         // Strip markdown code block wrapper if present
@@ -218,7 +214,7 @@ impl AnthropicClient {
             };
 
             if debug {
-                eprintln!("Debug: Full error response: {}", error_text);
+                debug!("Full error response: {}", error_text);
             }
 
             anyhow::bail!("{} (Status: {})", safe_error, status);
@@ -230,9 +226,7 @@ impl AnthropicClient {
             .context("Failed to read response text")?;
 
         if debug {
-            println!("\n{}", "=== DEBUG: Raw HTTP Response ===".cyan().bold());
-            println!("{}", response_text);
-            println!("{}", "=================================\n".cyan().bold());
+            debug!("Raw HTTP Response: {}", response_text);
         }
 
         let api_response: AnthropicResponse =
@@ -246,9 +240,7 @@ impl AnthropicClient {
             .clone();
 
         if debug {
-            println!("\n{}", "=== DEBUG: AI Message Content ===".cyan().bold());
-            println!("{}", content);
-            println!("{}", "==================================\n".cyan().bold());
+            debug!("AI Message Content: {}", content);
         }
 
         let clean_content = if content.starts_with("```json") && content.ends_with("```") {
@@ -350,7 +342,7 @@ impl AnthropicClient {
             };
 
             if debug {
-                eprintln!("Debug: Full error response: {}", error_text);
+                debug!("Full error response: {}", error_text);
             }
 
             anyhow::bail!("{} (Status: {})", safe_error, status);
@@ -362,9 +354,7 @@ impl AnthropicClient {
             .context("Failed to read response text")?;
 
         if debug {
-            println!("\n{}", "=== DEBUG: Raw HTTP Response ===".cyan().bold());
-            println!("{}", response_text);
-            println!("{}", "=================================\n".cyan().bold());
+            debug!("Raw HTTP Response: {}", response_text);
         }
 
         let api_response: AnthropicResponse =
@@ -378,9 +368,7 @@ impl AnthropicClient {
             .clone();
 
         if debug {
-            println!("\n{}", "=== DEBUG: AI Message Content ===".cyan().bold());
-            println!("{}", content);
-            println!("{}", "==================================\n".cyan().bold());
+            debug!("AI Message Content: {}", content);
         }
 
         // Strip markdown code block wrapper if present
