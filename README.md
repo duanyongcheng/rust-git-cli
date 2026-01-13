@@ -13,6 +13,7 @@ An intelligent Git commit tool that generates bilingual (Chinese/English) commit
 - **智能暂存** - 自动检测未暂存更改并提示确认
 - **交互式界面** - 彩色输出、差异预览、提交确认
 - **AI Changelog** - 交互式选择提交记录，AI 生成 changelog 总结，支持复制到剪切板
+- **AI Review** - 对当前代码变更生成 AI Review 报告（风险/建议/测试）
 - **灵活配置** - 支持多级配置文件和环境变量
 
 ## 安装 Installation
@@ -54,6 +55,8 @@ rust-git-cli                      # 查看仓库状态（默认命令）
 rust-git-cli commit               # AI 生成提交信息
 rust-git-cli commit --show-diff   # 预览差异后生成
 rust-git-cli commit --debug       # 调试模式
+rust-git-cli review               # AI Review 当前变更
+rust-git-cli review --staged      # 仅 Review 已暂存变更
 ```
 
 ## 命令 Commands
@@ -62,6 +65,7 @@ rust-git-cli commit --debug       # 调试模式
 |------|------|
 | `status` | 查看仓库状态（默认） |
 | `commit` | AI 生成并执行提交 |
+| `review` | AI Review 当前代码变更 |
 | `diff` | 查看代码差异 |
 | `log` | 查看提交历史，支持 AI 生成 changelog |
 | `init` | 初始化配置文件 |
@@ -117,6 +121,20 @@ rust-git-cli diff [OPTIONS]
 
 Options:
   --staged             仅显示已暂存的更改
+```
+
+### review 命令选项
+
+```bash
+rust-git-cli review [OPTIONS]
+
+Options:
+  --api-key <KEY>      临时指定 API Key
+  --model <MODEL>      指定 AI 模型
+  --base-url <URL>     自定义 API 端点
+  --staged             仅 review 已暂存的更改
+  --unstaged           仅 review 未暂存的更改
+  --debug              显示 AI 原始响应
 ```
 
 ### init 命令选项
@@ -195,7 +213,10 @@ $ rust-git-cli status
 # 2. 查看差异
 $ rust-git-cli diff
 
-# 3. 生成提交
+# 3. Review 变更（可选）
+$ rust-git-cli review
+
+# 4. 生成提交
 $ rust-git-cli commit
 
 # 检测到未暂存更改时会提示：
@@ -212,7 +233,7 @@ $ rust-git-cli commit
 # - Regenerate: 重新生成
 # - Cancel: 取消
 
-# 4. 生成 Changelog
+# 5. 生成 Changelog
 $ rust-git-cli log -n 20
 
 # 交互式选择提交记录 (Space 选择, Enter 确认)

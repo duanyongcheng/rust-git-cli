@@ -9,6 +9,7 @@ An intelligent Git commit tool that generates bilingual (Chinese/English) commit
 - **Smart Staging** - Detects unstaged changes and prompts for confirmation
 - **Interactive UI** - Colored output, diff preview, commit confirmation
 - **AI Changelog** - Interactively select commits, generate AI changelog summary, copy to clipboard
+- **AI Review** - Generate an AI code review report for current changes (risks/suggestions/tests)
 - **Flexible Configuration** - Multi-level config files and environment variables
 
 ## Installation
@@ -50,6 +51,8 @@ rust-git-cli                      # Check repository status (default)
 rust-git-cli commit               # Generate AI commit message
 rust-git-cli commit --show-diff   # Preview diff before generation
 rust-git-cli commit --debug       # Debug mode
+rust-git-cli review               # Review current changes with AI
+rust-git-cli review --staged      # Review staged changes only
 ```
 
 ## Commands
@@ -58,6 +61,7 @@ rust-git-cli commit --debug       # Debug mode
 |---------|-------------|
 | `status` | Check repository status (default) |
 | `commit` | Generate and execute AI commit |
+| `review` | Review current changes with AI |
 | `diff` | Show code changes |
 | `log` | Show commit history, supports AI changelog generation |
 | `init` | Initialize config file |
@@ -113,6 +117,20 @@ rust-git-cli diff [OPTIONS]
 
 Options:
   --staged             Show only staged changes
+```
+
+### review Options
+
+```bash
+rust-git-cli review [OPTIONS]
+
+Options:
+  --api-key <KEY>      Specify API key temporarily
+  --model <MODEL>      Specify AI model
+  --base-url <URL>     Custom API endpoint
+  --staged             Review staged changes only
+  --unstaged           Review unstaged changes only
+  --debug              Show raw AI response
 ```
 
 ### init Options

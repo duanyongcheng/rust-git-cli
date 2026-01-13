@@ -1,6 +1,6 @@
 use super::{
-    build_changelog_prompt, build_prompt, ChangelogContext, ChangelogSummary, CommitContext,
-    CommitMessage,
+    build_changelog_prompt, build_prompt, build_review_prompt, ChangelogContext, ChangelogSummary,
+    CommitContext, CommitMessage, ReviewContext, ReviewReport,
 };
 use anyhow::{Context, Result};
 use colored::*;
@@ -172,6 +172,138 @@ impl AnthropicClient {
         };
 
         Ok(commit_message)
+    }
+
+    pub async fn generate_review_report(
+        &self,
+        diff: &str,
+        context: &ReviewContext,
+        debug: bool,
+    ) -> Result<ReviewReport> {
+        let prompt = build_review_prompt(diff, context);
+
+        let request = AnthropicRequest {
+            model: self.model.clone(),
+            max_tokens: self.initial_max_tokens,
+            messages: vec![AnthropicMessage {
+                role: "user".to_string(),
+                content: format!(
+                    "{}\n\nPlease respond with only the JSON object, no other text.",
+                    prompt
+                ),
+            }],
+        };
+
+        let response = self
+            .client
+            .post(format!("{}/v1/messages", self.base_url))
+            .header("x-api-key", &self.api_key)
+            .header("anthropic-version", "2023-06-01")
+            .header("content-type", "application/json")
+            .json(&request)
+            .send()
+            .await
+            .context("Failed to send request to Anthropic")?;
+
+        if !response.status().is_success() {
+            let status = response.status();
+            let error_text = response.text().await?;
+
+            let safe_error = match status.as_u16() {
+                401 => "Authentication failed. Please check your API key.",
+                403 => "Access forbidden. Please check your API permissions.",
+                429 => "Rate limit exceeded. Please try again later.",
+                500..=599 => "Anthropic service error. Please try again later.",
+                _ => "Request failed. Please check your configuration.",
+            };
+
+            if debug {
+                eprintln!("Debug: Full error response: {}", error_text);
+            }
+
+            anyhow::bail!("{} (Status: {})", safe_error, status);
+        }
+
+        let response_text = response
+            .text()
+            .await
+            .context("Failed to read response text")?;
+
+        if debug {
+            println!("\n{}", "=== DEBUG: Raw HTTP Response ===".cyan().bold());
+            println!("{}", response_text);
+            println!("{}", "=================================\n".cyan().bold());
+        }
+
+        let api_response: AnthropicResponse =
+            serde_json::from_str(&response_text).context("Failed to parse Anthropic response")?;
+
+        let content = api_response
+            .content
+            .first()
+            .ok_or_else(|| anyhow::anyhow!("No response from Anthropic"))?
+            .text
+            .clone();
+
+        if debug {
+            println!("\n{}", "=== DEBUG: AI Message Content ===".cyan().bold());
+            println!("{}", content);
+            println!("{}", "==================================\n".cyan().bold());
+        }
+
+        let clean_content = if content.starts_with("```json") && content.ends_with("```") {
+            content
+                .strip_prefix("```json")
+                .and_then(|s| s.strip_suffix("```"))
+                .map(|s| s.trim())
+                .unwrap_or(&content)
+        } else if content.starts_with("```") && content.ends_with("```") {
+            content
+                .strip_prefix("```")
+                .and_then(|s| s.strip_suffix("```"))
+                .map(|s| s.trim())
+                .unwrap_or(&content)
+        } else {
+            &content
+        };
+
+        let report = match serde_json::from_str::<ReviewReport>(clean_content) {
+            Ok(report) => report,
+            Err(_) => {
+                let mut depth = 0;
+                let mut start_idx = None;
+                let mut end_idx = None;
+
+                for (idx, ch) in clean_content.char_indices() {
+                    match ch {
+                        '{' => {
+                            if depth == 0 && start_idx.is_none() {
+                                start_idx = Some(idx);
+                            }
+                            depth += 1;
+                        }
+                        '}' => {
+                            depth -= 1;
+                            if depth == 0 && start_idx.is_some() {
+                                end_idx = Some(idx + ch.len_utf8());
+                                break;
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+
+                if let (Some(start), Some(end)) = (start_idx, end_idx) {
+                    let json_str = &clean_content[start..end];
+                    serde_json::from_str(json_str)
+                        .context("Failed to parse extracted JSON from Anthropic response")?
+                } else {
+                    anyhow::bail!("No valid JSON object found in Anthropic response");
+                }
+            }
+        };
+
+        Ok(report)
     }
 
     pub async fn generate_changelog(

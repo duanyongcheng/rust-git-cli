@@ -53,6 +53,16 @@ async fn main() -> Result<()> {
         }) => {
             handle_commit_command(repo, api_key, model, base_url, auto, show_diff, debug).await?;
         }
+        Some(Commands::Review {
+            api_key,
+            model,
+            base_url,
+            staged,
+            unstaged,
+            debug,
+        }) => {
+            handle_review_command(repo, api_key, model, base_url, staged, unstaged, debug).await?;
+        }
         Some(Commands::Diff { staged }) => {
             handle_diff_command(repo, staged)?;
         }
@@ -229,6 +239,92 @@ fn handle_diff_command(repo: GitRepo, staged: bool) -> Result<()> {
     } else {
         println!("{}", diff);
     }
+
+    Ok(())
+}
+
+#[allow(clippy::too_many_arguments)]
+async fn handle_review_command(
+    repo: GitRepo,
+    api_key: Option<String>,
+    model: Option<String>,
+    base_url: Option<String>,
+    staged: bool,
+    unstaged: bool,
+    debug: bool,
+) -> Result<()> {
+    if staged && unstaged {
+        anyhow::bail!("Cannot use both --staged and --unstaged");
+    }
+
+    let config = Config::load().unwrap_or_default();
+
+    let diff_scope = if staged {
+        "staged"
+    } else if unstaged {
+        "unstaged"
+    } else {
+        "all"
+    };
+
+    let diff = if staged {
+        repo.get_diff(true)?
+    } else if unstaged {
+        repo.get_diff(false)?
+    } else {
+        repo.get_combined_diff()?
+    };
+
+    if diff.is_empty() {
+        CommitUI::show_info("No changes to review");
+        return Ok(());
+    }
+
+    let status = repo.get_status()?;
+    let added_lines = diff
+        .lines()
+        .filter(|l| l.starts_with('+') && !l.starts_with("+++"))
+        .count();
+    let removed_lines = diff
+        .lines()
+        .filter(|l| l.starts_with('-') && !l.starts_with("---"))
+        .count();
+
+    let branch_info = repo.get_branch_info()?;
+
+    let context = ai::ReviewContext {
+        branch_name: branch_info.name,
+        file_count: status.total_changes(),
+        added_lines,
+        removed_lines,
+        diff_scope: diff_scope.to_string(),
+    };
+
+    let api_key = api_key
+        .or_else(|| config.get_api_key())
+        .or_else(|| CommitUI::get_api_key(&config.ai.provider).ok())
+        .context("No API key provided")?;
+
+    let final_model = model.unwrap_or(config.ai.model.clone());
+    let final_base_url = base_url.or(config.ai.base_url.clone());
+    let client = ai::create_client(
+        &config.ai.provider,
+        api_key,
+        final_model,
+        final_base_url,
+        config.ai.max_tokens,
+    )?;
+
+    CommitUI::show_info("Generating AI code review...");
+
+    let report = client
+        .generate_review_report(&diff, &context, debug)
+        .await?;
+
+    println!("\n{}", "=".repeat(60));
+    println!("{}", "AI Code Review".bold().green());
+    println!("{}\n", "=".repeat(60));
+    println!("{}", report.format_display());
 
     Ok(())
 }

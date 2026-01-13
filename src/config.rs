@@ -13,7 +13,7 @@ pub struct Config {
 pub struct AIConfig {
     pub provider: String,
     pub model: String,
-    pub api_key_env: String,
+    pub api_key_env: Option<String>,
     pub api_key: Option<String>,
     pub base_url: Option<String>,
     #[serde(default = "default_max_tokens")]
@@ -38,7 +38,7 @@ impl Default for Config {
             ai: AIConfig {
                 provider: "openai".to_string(),
                 model: "gpt-4.1".to_string(),
-                api_key_env: "OPENAI_API_KEY".to_string(),
+                api_key_env: None,
                 api_key: None,
                 base_url: None,
                 max_tokens: 2000,
@@ -84,8 +84,12 @@ impl Config {
             return Some(key.clone());
         }
 
-        // Then check environment variable
-        std::env::var(&self.ai.api_key_env).ok()
+        // Then check environment variable if configured
+        if let Some(env_var) = &self.ai.api_key_env {
+            return std::env::var(env_var).ok();
+        }
+
+        None
     }
 
     pub fn init(local: bool, force: bool) -> Result<PathBuf> {

@@ -12,6 +12,15 @@ pub struct CommitContext {
     pub removed_lines: usize,
 }
 
+#[derive(Debug, Clone)]
+pub struct ReviewContext {
+    pub branch_name: Option<String>,
+    pub file_count: usize,
+    pub added_lines: usize,
+    pub removed_lines: usize,
+    pub diff_scope: String,
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CommitMessage {
     #[serde(alias = "type", alias = "commit_type")]
@@ -143,6 +152,20 @@ impl AIClient {
         }
     }
 
+    pub async fn generate_review_report(
+        &self,
+        diff: &str,
+        context: &ReviewContext,
+        debug: bool,
+    ) -> Result<ReviewReport> {
+        match self {
+            AIClient::OpenAI(client) => client.generate_review_report(diff, context, debug).await,
+            AIClient::Anthropic(client) => {
+                client.generate_review_report(diff, context, debug).await
+            }
+        }
+    }
+
     pub async fn generate_changelog(
         &self,
         commits: &[crate::git::CommitInfo],
@@ -220,6 +243,124 @@ Respond with a JSON object containing these fields. Example:
         context.added_lines,
         context.removed_lines,
         truncate_diff(diff, 3000)
+    )
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ReviewReport {
+    pub verdict: String,
+    pub verdict_en: String,
+    pub summary: String,
+    pub summary_en: String,
+    #[serde(default)]
+    pub risks: Vec<String>,
+    #[serde(default)]
+    pub risks_en: Vec<String>,
+    #[serde(default)]
+    pub suggestions: Vec<String>,
+    #[serde(default)]
+    pub suggestions_en: Vec<String>,
+    #[serde(default)]
+    pub tests: Vec<String>,
+    #[serde(default)]
+    pub tests_en: Vec<String>,
+}
+
+impl ReviewReport {
+    pub fn format_display(&self) -> String {
+        let mut output = String::new();
+
+        output.push_str(&format!(
+            "## 结论 / Verdict\n- {} / {}\n\n",
+            self.verdict, self.verdict_en
+        ));
+        output.push_str(&format!(
+            "## 摘要 / Summary\n{}\n{}\n\n",
+            self.summary, self.summary_en
+        ));
+
+        format_bilingual_section(&mut output, "## 风险 / Risks", &self.risks, &self.risks_en);
+        format_bilingual_section(
+            &mut output,
+            "## 建议 / Suggestions",
+            &self.suggestions,
+            &self.suggestions_en,
+        );
+        format_bilingual_section(&mut output, "## 测试 / Tests", &self.tests, &self.tests_en);
+
+        output
+    }
+}
+
+fn format_bilingual_section(output: &mut String, title: &str, zh: &[String], en: &[String]) {
+    if zh.is_empty() && en.is_empty() {
+        return;
+    }
+    output.push_str(title);
+    output.push('\n');
+
+    let max_len = zh.len().max(en.len());
+    for i in 0..max_len {
+        let zh_item = zh.get(i).map(|s| s.as_str()).unwrap_or("[Missing]");
+        let en_item = en
+            .get(i)
+            .map(|s| s.as_str())
+            .unwrap_or("[Missing translation]");
+        output.push_str(&format!("- {} / {}\n", zh_item, en_item));
+    }
+    output.push('\n');
+}
+
+pub fn build_review_prompt(diff: &str, context: &ReviewContext) -> String {
+    format!(
+        r#"You are a senior software engineer doing a code review. Based on the following git diff, generate a bilingual (Chinese and English) review report.
+
+Context:
+- Branch: {}
+- Diff scope: {}
+- Files changed: {}
+- Lines added: {}
+- Lines removed: {}
+
+Git Diff:
+```
+{}
+```
+
+Focus on:
+1) Correctness and potential bugs
+2) Edge cases and error handling
+3) Security and privacy concerns
+4) Performance pitfalls
+5) Maintainability and readability
+6) Missing or suggested tests
+
+Output requirements:
+- Respond with exactly one valid JSON object (no markdown, no commentary).
+- Be specific: reference file paths and identifiers when possible.
+- Keep each bullet concise.
+- For bilingual arrays, keep the same order and meaning in both languages.
+
+JSON schema:
+{{
+  "verdict": "approve|comment|request_changes",
+  "verdict_en": "approve|comment|request_changes",
+  "summary": "中文摘要（2-3句）",
+  "summary_en": "English summary (2-3 sentences)",
+  "risks": ["中文风险点1", "中文风险点2"],
+  "risks_en": ["English risk 1", "English risk 2"],
+  "suggestions": ["中文建议1", "中文建议2"],
+  "suggestions_en": ["English suggestion 1", "English suggestion 2"],
+  "tests": ["中文测试建议1", "中文测试建议2"],
+  "tests_en": ["English test suggestion 1", "English test suggestion 2"]
+}}
+"#,
+        context.branch_name.as_deref().unwrap_or("unknown"),
+        context.diff_scope,
+        context.file_count,
+        context.added_lines,
+        context.removed_lines,
+        truncate_diff(diff, 6000)
     )
 }
 
